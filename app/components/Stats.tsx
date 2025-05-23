@@ -11,10 +11,13 @@ interface StatsData {
 export default function Stats() {
   const [stats, setStats] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0); // Add this state
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('/api/stats');
+      const response = await fetch('/api/stats', {
+        cache: 'no-store' // Prevent caching
+      });
       if (!response.ok) throw new Error('Failed to fetch stats');
       const data = await response.json();
       setStats(data);
@@ -26,21 +29,26 @@ export default function Stats() {
   };
 
   useEffect(() => {
+    // Initial fetch
     fetchStats();
-
-    // Add event listener for stats refresh
-    const handleStatsRefresh = () => {
-      fetchStats();
+    
+    // Set up event listener for stats refresh
+    const handleRefresh = () => {
+      setRefreshKey(prev => prev + 1); // Force re-render
     };
-
-    // Listen for the custom event on the window object
-    window.addEventListener('statsRefresh', handleStatsRefresh);
-
-    // Cleanup
+    
+    window.addEventListener('statsRefresh', handleRefresh);
+    
+    // Clean up
     return () => {
-      window.removeEventListener('statsRefresh', handleStatsRefresh);
+      window.removeEventListener('statsRefresh', handleRefresh);
     };
   }, []);
+
+  // Re-fetch when refreshKey changes
+  useEffect(() => {
+    fetchStats();
+  }, [refreshKey]);
 
   if (loading) {
     return <div className="text-gray-400">Loading stats...</div>;
